@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ことばパズル｜櫻花町・旅人珈琲館（手機互動學院）</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Sans+TC:wght@400;500;700&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            washi: '#FAF7F2',       // 和紙米白
+            washiDark: '#EFE9DE',   // 深米底
+            indigoJp: '#2B4C7E',    // 京都靛藍
+            indigoLight: '#3E66A3', // 淺京都藍
+            sakura: '#D96B84',      // 櫻花粉
+            sakuraSoft: '#FCECEF',  // 淡櫻粉
+            matcha: '#4A7C59',      // 宇治抹茶綠
+            matchaSoft: '#E8F2EB',  // 淡抹茶
+            warmGold: '#D49A3A',    // 暖金
+            goldSoft: '#FDF5E6',    // 淡金
+            terracotta: '#C85245',  // 柿紅
+            ink: '#2A2826',         // 墨黑
+          },
+          fontFamily: {
+            sans: ['"Noto Sans TC"', '"Noto Sans JP"', 'sans-serif'],
+            maru: ['"Zen Maru Gothic"', '"Noto Sans TC"', 'sans-serif'],
+            jp: ['"Noto Sans JP"', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #FAF7F2;
+      background-image: radial-gradient(#E3DACB 1px, transparent 1px);
+      background-size: 20px 20px;
+      color: #2A2826;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* 底部安全區域適配（iPhone Home Indicator） */
+    .pb-safe {
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+    .main-bottom-space {
+      padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+    }
+
+    /* 隱藏橫向捲動條但保留滑動手勢 */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .washi-card {
+      background: #FFFFFF;
+      border: 1.5px solid #E6DEC8;
+      box-shadow: 0 3px 10px rgba(43, 76, 126, 0.05);
+    }
+
+    /* 配對卡片觸控回饋 */
+    .match-btn {
+      touch-action: manipulation;
+      user-select: none;
+      transition: transform 0.14s ease, background-color 0.2s ease, border-color 0.2s ease;
+    }
+    .match-btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+    .match-btn.selected {
+      background-color: #EDF3FA;
+      border-color: #2B4C7E;
+      box-shadow: 0 0 0 2.5px rgba(43, 76, 126, 0.28);
+    }
+    .match-btn.matched {
+      background-color: #E8F2EB;
+      border-color: #4A7C59;
+      color: #32573D;
+      opacity: 0.72;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      75% { transform: translateX(5px); }
+    }
+    .animate-shake {
+      animation: shake 0.32s ease-in-out;
+    }
+
+    @keyframes popIn {
+      0% { opacity: 0; transform: translateY(6px) scale(0.97); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .animate-pop {
+      animation: popIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased overflow-x-hidden selection:bg-sakuraSoft selection:text-indigoJp">
+
+  <!-- ==================== 頂部精簡狀態列（Mobile-First Sticky Header） ==================== -->
+  <header class="sticky top-0 z-40 bg-indigoJp text-white shadow-md border-b-2 border-sakura">
+    <div class="max-w-4xl mx-auto px-3 py-2 flex items-center justify-between gap-2">
+      <!-- 左側品牌識別 -->
+      <div class="flex items-center gap-2 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-washi text-indigoJp flex items-center justify-center border border-warmGold shrink-0 font-maru font-black text-base shadow-xs">
+          桜
+        </div>
+        <div class="min-w-0">
+          <h1 class="font-maru text-sm sm:text-base font-bold tracking-tight text-washi truncate">旅人珈琲館</h1>
+          <p id="header-rank-label" class="text-[11px] text-amber-200 font-medium truncate">🌱 見習旅人</p>
+        </div>
+      </div>
+
+      <!-- 右側：緊湊積分膠囊 + 通關數 + Google 登入按鈕（不換行擁擠） -->
+      <div class="flex items-center gap-1.5 shrink-0">
+        <div class="bg-indigoLight/95 border border-blue-300/30 rounded-xl px-2 py-1 flex items-center gap-1.5 text-xs">
+          <div class="text-center leading-none">
+            <span class="text-[9px] text-blue-200 block">積分</span>
+            <span id="ui-score" class="font-extrabold text-amber-300 text-xs">0</span>
+          </div>
+          <div class="w-px h-5 bg-blue-300/30"></div>
+          <div class="text-center leading-none">
+            <span class="text-[9px] text-blue-200 block">通關</span>
+            <span id="ui-cleared-count" class="font-extrabold text-emerald-300 text-xs">0/48</span>
+          </div>
+        </div>
+
+        <!-- Google 帳號登入／使用者頭像 -->
+        <div id="auth-area">
+          <button id="btn-google-login" class="bg-white hover:bg-gray-100 active:scale-95 text-ink font-bold text-xs px-2.5 py-2 rounded-xl shadow-xs flex items-center gap-1.5 transition min-h-[40px] whitespace-nowrap">
+            <svg class="w-4 h-4 shrink-0" viewBox="0 0 24 24"><path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/><path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.11-6.72-4.96H1.29v3.14C3.26 21.3 7.31 24 12 24z"/><path fill="#FBBC05" d="M5.28 14.24c-.24-.72-.38-1.49-.38-2.24s.14-1.52.38-2.24V6.62H1.29C.47 8.24 0 10.06 0 12s.47 3.76 1.29 5.38l3.99-3.14z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.31 0 3.26 2.7 1.29 6.62l3.99 3.14c.95-2.85 3.6-4.96 6.72-4.96z"/></svg>
+            <span>登入</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 雲端同步與管理員快速預覽切換條 -->
+  <div id="sync-banner" class="bg-goldSoft border-b border-warmGold/30 text-amber-950 text-xs py-1.5 px-3 flex flex-wrap items-center justify-center gap-2 text-center leading-snug">
+    <span>💡 訪客模式：登入 <b>Google 帳號</b> 可雲端紀錄成績</span>
+    <button id="btn-copy-domain" class="underline font-bold text-terracotta hover:text-indigoJp active:scale-95 px-1.5 py-0.5 rounded bg-white/80 border border-terracotta/30">
+      📋 複製目前網域
+    </button>
+    <button id="btn-toggle-demo-admin" class="underline font-bold text-indigoJp hover:text-sakura active:scale-95 px-1.5 py-0.5 rounded bg-white/80 border border-warmGold/40">
+      👑 模擬管理員預覽
+    </button>
+  </div>
+
+  <!-- 網域未授權引導與快速測試 Modal -->
+  <div id="domain-help-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-5 border-2 border-washiDark shadow-2xl space-y-3.5 animate-pop">
+      <div class="flex items-center gap-2 text-terracotta">
+        <span class="text-2xl">🔒</span>
+        <h3 class="font-maru text-base font-bold">目前網域尚未加入 Firebase 授權</h3>
+      </div>
+      <p class="text-xs text-gray-600 leading-relaxed">
+        Google 基於安全性限制，只允許在已授權的網址進行登入。您目前開啟網頁的網域為：
+      </p>
+      <div class="flex items-center justify-between gap-2 bg-washi border border-washiDark rounded-xl px-3 py-2">
+        <code id="modal-current-domain" class="text-xs font-mono font-bold text-indigoJp truncate"></code>
+        <button id="btn-modal-copy-domain" class="shrink-0 bg-indigoJp text-white text-xs font-bold px-2.5 py-1.5 rounded-lg active:scale-95">
+          複製網域
+        </button>
+      </div>
+      <div class="bg-goldSoft/60 rounded-xl p-3 text-xs text-amber-950 space-y-1 leading-relaxed">
+        <p class="font-bold">📌 正式啟用步驟（約 15 秒）：</p>
+        <p>1. 前往 <b>Firebase Console</b> → <b>Authentication</b> → <b>Settings（設定）</b></p>
+        <p>2. 點選 <b>Authorized domains（已授權網域）</b> → <b>新增網域</b>，貼上上方網域即可。</p>
+      </div>
+      <div class="border-t border-washiDark pt-3 space-y-2">
+        <p class="text-[11px] font-bold text-gray-500">或者，您也可以先在目前預覽視窗使用測試身分體驗：</p>
+        <div class="grid grid-cols-2 gap-2">
+          <button id="btn-sim-admin-login" class="min-h-[42px] bg-warmGold text-white font-bold text-xs rounded-xl active:scale-95">
+            👑 以管理員身分測試
+          </button>
+          <button onclick="document.getElementById('domain-help-modal').classList.add('hidden')" class="min-h-[42px] bg-washiDark text-ink font-bold text-xs rounded-xl active:scale-95">
+            關閉視窗
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重置學習紀錄確認 Modal -->
+  <div id="reset-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 border-2 border-washiDark shadow-2xl space-y-4 animate-pop">
+      <h3 class="font-maru text-base font-bold text-terracotta">⚠️ 確定要重置所有學習紀錄嗎？</h3>
+      <p class="text-xs text-gray-600 leading-relaxed">此動作將會清除本機儲存的累計積分、單元通關進度、作答歷史與錯題本紀錄，且無法復原。</p>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="window.confirmResetData()" class="min-h-[44px] bg-terracotta text-white font-bold text-xs rounded-xl active:scale-95">確定重置</button>
+        <button onclick="window.closeResetModal()" class="min-h-[44px] bg-washiDark text-ink font-bold text-xs rounded-xl active:scale-95">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 浮動 Toast 訊息容器 -->
+  <div id="toast-container" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 pointer-events-none w-[92%] max-w-sm"></div>
+
+  <!-- ==================== 主內容視圖區（手機底部預留導覽列空間） ==================== -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-3 pt-4 main-bottom-space">
+
+    <!-- 1. 單元地圖分頁 -->
+    <section id="view-units" class="space-y-4">
+      <!-- 上次學習紀錄與接續挑戰卡片 -->
+      <div id="resume-last-card" class="hidden washi-card rounded-2xl p-4 border-2 border-indigoJp/30 bg-gradient-to-br from-white to-washi space-y-3 animate-pop">
+        <div class="flex items-center justify-between gap-2 text-xs">
+          <span class="font-extrabold text-indigoJp">📌 上次學習紀錄與進度</span>
+          <span id="resume-last-time" class="text-gray-400"></span>
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="min-w-0">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span id="resume-unit-code" class="text-xs font-extrabold text-sakura">UNIT 01</span>
+              <span id="resume-mode-badge" class="text-[11px] font-bold px-2 py-0.5 rounded bg-washiDark text-indigoJp"></span>
+              <span id="resume-result-badge" class="text-[11px] font-bold px-2 py-0.5 rounded"></span>
+            </div>
+            <h3 id="resume-unit-title" class="font-maru font-bold text-base text-ink mt-1 truncate"></h3>
+            <p id="resume-last-detail" class="font-jp text-xs text-gray-600 mt-0.5 truncate"></p>
+          </div>
+          <div class="text-right shrink-0 bg-goldSoft px-2.5 py-1.5 rounded-xl border border-warmGold/30">
+            <span class="text-[10px] text-amber-800 block">累計總分</span>
+            <span id="resume-total-score" class="font-extrabold text-sm text-warmGold">0</span>
+          </div>
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between text-[11px] font-bold text-gray-600">
+            <span>全館通關進度</span>
+            <span id="resume-progress-text">0 / 48 單元 (0%)</span>
+          </div>
+          <div class="w-full h-2 bg-washiDark rounded-full overflow-hidden">
+            <div id="resume-progress-bar" class="h-full bg-matcha rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+        <button id="btn-resume-continue" class="w-full min-h-[48px] bg-indigoJp hover:bg-indigoLight active:scale-95 text-white font-bold text-sm rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition">
+          <span>▶ 繼續上次進度</span>
+          <span id="resume-btn-sub" class="text-xs opacity-80"></span>
+        </button>
+      </div>
+
+      <!-- 橫向滑動章節快速篩選膠囊 -->
+      <div id="chapter-pills" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1"></div>
+
+      <!-- 八大章節手風琴列表 -->
+      <div id="chapters-container" class="space-y-3"></div>
+    </section>
+
+    <!-- 2. 單字配對分頁 -->
+    <section id="view-match" class="hidden space-y-3">
+      <div class="washi-card rounded-2xl p-3.5 space-y-2.5">
+        <div class="flex items-center justify-between gap-2">
+          <select id="match-unit-select" class="flex-1 min-h-[44px] bg-washi border border-washiDark rounded-xl px-3 text-sm font-bold text-indigoJp"></select>
+          <label class="flex items-center gap-1.5 text-xs font-bold text-gray-600 shrink-0 px-2 py-2 bg-washi rounded-xl border border-washiDark cursor-pointer">
+            <input type="checkbox" id="toggle-romaji" checked class="accent-indigoJp w-4 h-4" />
+            <span>羅馬音</span>
+          </label>
+        </div>
+        <div class="flex items-center justify-between gap-2 text-xs">
+          <span id="match-unit-status" class="font-bold text-matcha">配對進度：0 / 4</span>
+          <button id="btn-next-sentence-from-match" class="min-h-[38px] bg-indigoJp text-white font-bold px-3 py-1.5 rounded-xl active:scale-95">
+            前往本課造句 ➔
+          </button>
+        </div>
+      </div>
+
+      <!-- 並排雙欄單字配對區 -->
+      <div class="grid grid-cols-2 gap-2.5">
+        <div class="space-y-2">
+          <div class="text-center text-xs font-bold text-indigoJp bg-white/80 py-1 rounded-lg border border-washiDark">🇯🇵 日語單字（點擊發音）</div>
+          <div id="match-jp-col" class="space-y-2"></div>
+        </div>
+        <div class="space-y-2">
+          <div class="text-center text-xs font-bold text-sakura bg-white/80 py-1 rounded-lg border border-washiDark">🇹🇼 中文詞義</div>
+          <div id="match-zh-col" class="space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 拼接造句分頁 -->
+    <section id="view-sentence" class="hidden space-y-3">
+      <div class="washi-card rounded-2xl p-3.5 space-y-2.5">
+        <div class="flex items-center gap-2">
+          <select id="sentence-unit-select" class="flex-1 min-h-[44px] bg-washi border border-washiDark rounded-xl px-3 text-sm font-bold text-indigoJp"></select>
+          <div class="flex gap-1.5 shrink-0">
+            <button id="btn-prev-unit" class="min-h-[44px] px-3 bg-washi border border-washiDark rounded-xl font-bold text-xs text-indigoJp active:scale-95">◀ 上課</button>
+            <button id="btn-next-unit" class="min-h-[44px] px-3 bg-washi border border-washiDark rounded-xl font-bold text-xs text-indigoJp active:scale-95">下課 ▶</button>
+          </div>
+        </div>
+        <div id="sentence-mode-tag" class="hidden bg-sakuraSoft text-terracotta text-xs font-bold px-3 py-1.5 rounded-xl flex items-center justify-between">
+          <span>🔥 錯題特訓模式中</span>
+          <button onclick="window.exitDrillMode()" class="underline">退出特訓</button>
+        </div>
+      </div>
+
+      <!-- 上次作答紀錄提示框 -->
+      <div id="sentence-prev-attempt-box" class="hidden">
+        <div class="flex items-center justify-between gap-2">
+          <span id="prev-attempt-status-label" class="font-bold"></span>
+          <span id="prev-attempt-meta" class="text-[11px] text-gray-500"></span>
+        </div>
+        <div id="prev-attempt-sentence"></div>
+        <div class="grid grid-cols-2 gap-2 pt-1">
+          <button id="btn-apply-prev-sentence" class="min-h-[38px] bg-white border border-washiDark text-indigoJp font-bold text-xs rounded-xl active:scale-95">📥 帶入上次拼法</button>
+          <button id="btn-fresh-sentence" class="min-h-[38px] bg-white border border-washiDark text-gray-600 font-bold text-xs rounded-xl active:scale-95">🔄 清空重新挑戰</button>
+        </div>
+      </div>
+
+      <!-- 題目與拼接作答區 -->
+      <div class="washi-card rounded-2xl p-4 space-y-3.5">
+        <div>
+          <span id="q-unit-badge" class="text-xs font-extrabold text-sakura">UNIT 01</span>
+          <h3 id="q-prompt-zh" class="font-maru font-bold text-lg text-ink mt-1 leading-snug"></h3>
+        </div>
+
+        <!-- 已選積木作答槽 -->
+        <div id="answer-dropzone" class="min-h-[76px] bg-washi rounded-2xl p-3 border-2 border-dashed border-indigoJp/30 flex flex-wrap items-center gap-2"></div>
+
+        <!-- 候選詞塊積木池 -->
+        <div id="word-bank" class="flex flex-wrap gap-2 pt-1"></div>
+
+        <!-- 操作按鈕 -->
+        <div class="grid grid-cols-3 gap-2 pt-1">
+          <button id="btn-clear-sentence" class="min-h-[48px] bg-washiDark text-ink font-bold text-xs sm:text-sm rounded-xl active:scale-95">清空重拼</button>
+          <button id="btn-check-sentence" class="col-span-2 min-h-[48px] bg-matcha hover:bg-matcha/90 text-white font-bold text-sm rounded-xl shadow-xs active:scale-95">✓ 檢查答案</button>
+        </div>
+
+        <p id="sentence-feedback-msg" class="text-center min-h-[20px]"></p>
+      </div>
+
+      <!-- 答對後的詳細文法解析卡 -->
+      <div id="grammar-explanation-box" class="hidden washi-card rounded-2xl p-4 border-2 border-matcha/40 bg-matchaSoft/30 space-y-3 animate-pop">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <span class="text-xs font-extrabold text-matcha">📘 完整日語表現與文法解析</span>
+            <p id="exp-jp-full" class="font-jp font-bold text-lg text-indigoJp mt-1"></p>
+            <p id="exp-romaji" class="text-xs font-mono text-gray-500"></p>
+          </div>
+          <button id="btn-speak-answer" class="hidden min-h-[42px] px-3 bg-indigoJp text-white text-xs font-bold rounded-xl shrink-0 active:scale-95">🔊 朗讀整句</button>
+        </div>
+        <div id="exp-tokens" class="grid grid-cols-1 sm:grid-cols-2 gap-2"></div>
+        <div class="bg-white rounded-xl p-3 border border-matcha/25 text-xs text-ink leading-relaxed">
+          <span class="font-bold text-matcha block mb-1">💡 核心文法重點：</span>
+          <p id="exp-grammar-note"></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. 我的錯題本分頁 -->
+    <section id="view-mistakes" class="hidden space-y-3">
+      <div class="washi-card rounded-2xl p-4 flex items-center justify-between gap-3">
+        <div>
+          <h2 class="font-maru font-bold text-base text-indigoJp">📕 我的錯題特訓本</h2>
+          <p class="text-xs text-gray-500 mt-0.5">答錯的造句題會自動收錄，答對後即自動移出</p>
+        </div>
+        <button id="btn-start-mistake-drill" class="min-h-[44px] bg-terracotta disabled:opacity-40 text-white font-bold text-xs px-3.5 py-2 rounded-xl shrink-0 active:scale-95">
+          🔥 開始特訓
+        </button>
+      </div>
+      <div id="mistakes-list" class="space-y-2.5"></div>
+    </section>
+
+    <!-- 5. 成績歷程分頁 -->
+    <section id="view-history" class="hidden space-y-3">
+      <div class="washi-card rounded-2xl p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-xs text-gray-500">目前旅人稱號</span>
+            <h2 id="history-player-title" class="font-maru font-bold text-base text-indigoJp">🌱 見習旅人</h2>
+          </div>
+          <button onclick="window.openResetModal()" class="text-xs text-terracotta underline font-bold px-2 py-1">重置進度</button>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center">
+          <div class="bg-goldSoft rounded-xl p-2.5 border border-warmGold/30">
+            <span class="text-[11px] text-amber-800 block">累計總積分</span>
+            <span id="history-total-score" class="font-extrabold text-base text-warmGold">0</span>
+          </div>
+          <div class="bg-matchaSoft rounded-xl p-2.5 border border-matcha/30">
+            <span class="text-[11px] text-matcha block">已通關單元</span>
+            <span id="history-cleared-stat" class="font-extrabold text-base text-matcha">0 / 48</span>
+          </div>
+          <div class="bg-washi rounded-xl p-2.5 border border-washiDark">
+            <span class="text-[11px] text-gray-500 block">累計作答次數</span>
+            <span id="history-attempts-stat" class="font-extrabold text-base text-indigoJp">0 次</span>
+          </div>
+          <div class="bg-sakuraSoft rounded-xl p-2.5 border border-sakura/30">
+            <span class="text-[11px] text-sakura block">造句正確率</span>
+            <span id="history-accuracy-stat" class="font-extrabold text-base text-sakura">0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 八大章節完成度 -->
+      <div class="washi-card rounded-2xl p-4 space-y-2.5">
+        <h3 class="font-maru font-bold text-sm text-indigoJp">📚 各章節通關進度</h3>
+        <div id="history-chapters-stats" class="space-y-2.5"></div>
+      </div>
+
+      <!-- 最近 10 筆作答紀錄時間軸 -->
+      <div class="washi-card rounded-2xl p-4 space-y-2.5">
+        <h3 class="font-maru font-bold text-sm text-indigoJp">🕒 最近 10 筆作答紀錄</h3>
+        <div id="history-timeline-list" class="space-y-2"></div>
+      </div>
+    </section>
+
+    <!-- 6. 教師管理後台分頁（僅 misiva60@layjh.ttct.edu.tw 或模擬模式可見） -->
+    <section id="view-admin" class="hidden space-y-3">
+      <div class="washi-card rounded-2xl p-4 border-2 border-warmGold/50 bg-goldSoft/40 space-y-2.5">
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <h2 class="font-maru font-bold text-base text-indigoJp">👑 教師成績管理後台</h2>
+            <p id="admin-mode-subtitle" class="text-xs text-gray-600 mt-0.5 leading-relaxed">即時檢視所有 Google 登入學生的積分與單元進度。</p>
+          </div>
+          <div class="flex gap-1.5 shrink-0">
+            <button id="btn-refresh-admin" class="min-h-[40px] px-2.5 bg-white border border-washiDark rounded-xl text-xs font-bold text-indigoJp active:scale-95">🔄 刷新</button>
+            <button id="btn-export-csv" class="min-h-[40px] px-2.5 bg-matcha text-white rounded-xl text-xs font-bold active:scale-95">📥 CSV</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-white rounded-xl p-2 border border-washiDark">
+            <span class="text-[11px] text-gray-500 block">學生總數</span>
+            <span id="admin-stat-students" class="font-extrabold text-sm text-indigoJp">0 人</span>
+          </div>
+          <div class="bg-white rounded-xl p-2 border border-washiDark">
+            <span class="text-[11px] text-gray-500 block">平均積分</span>
+            <span id="admin-stat-avg-score" class="font-extrabold text-sm text-warmGold">0 分</span>
+          </div>
+          <div class="bg-white rounded-xl p-2 border border-washiDark">
+            <span class="text-[11px] text-gray-500 block">平均通關</span>
+            <span id="admin-stat-avg-units" class="font-extrabold text-sm text-matcha">0/48</span>
+          </div>
+        </div>
+
+        <input id="admin-search-input" type="search" placeholder="🔍 搜尋學生姓名或 Google 信箱..." class="w-full min-h-[42px] bg-white border border-washiDark rounded-xl px-3 text-xs" />
+      </div>
+
+      <!-- 手機版摘要卡片列表 -->
+      <div id="admin-students-cards" class="md:hidden space-y-2.5"></div>
+
+      <!-- 桌面版明細表格 -->
+      <div class="hidden md:block washi-card rounded-2xl overflow-hidden">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-washi border-b border-washiDark text-indigoJp font-bold">
+            <tr>
+              <th class="py-3 px-4">學生姓名</th>
+              <th class="py-3 px-4">Email</th>
+              <th class="py-3 px-4">累計積分</th>
+              <th class="py-3 px-4">通關進度</th>
+              <th class="py-3 px-4">已通關單元</th>
+              <th class="py-3 px-4">未解決錯題</th>
+              <th class="py-3 px-4">最後更新</th>
+            </tr>
+          </thead>
+          <tbody id="admin-students-tbody" class="divide-y divide-washiDark"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== 底部固定導覽列（Mobile Bottom Tab Bar） ==================== -->
+  <nav class="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-washiDark pb-safe shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+    <div class="max-w-4xl mx-auto flex items-stretch justify-around px-1 pt-1">
+      <button data-tab="units" class="tab-btn flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-indigoJp font-bold bg-sakuraSoft/60 transition">
+        <span class="text-base leading-none">🗺️</span>
+        <span class="text-[11px]">單元地圖</span>
+      </button>
+      <button data-tab="match" class="tab-btn flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-500 transition">
+        <span class="text-base leading-none">🎴</span>
+        <span class="text-[11px]">單字配對</span>
+      </button>
+      <button data-tab="sentence" class="tab-btn flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-500 transition">
+        <span class="text-base leading-none">🧩</span>
+        <span class="text-[11px]">拼接造句</span>
+      </button>
+      <button data-tab="mistakes" class="tab-btn relative flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-500 transition">
+        <span class="text-base leading-none">📕</span>
+        <span class="text-[11px]">錯題本</span>
+        <span id="ui-mistake-badge" class="hidden absolute top-1 right-2 bg-terracotta text-white text-[10px] font-bold px-1.5 rounded-full">0</span>
+      </button>
+      <button data-tab="history" class="tab-btn flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-gray-500 transition">
+        <span class="text-base leading-none">📊</span>
+        <span class="text-[11px]">成績歷程</span>
+      </button>
+      <button id="tab-admin-btn" data-tab="admin" class="hidden tab-btn flex-1 min-h-[52px] rounded-xl flex flex-col items-center justify-center gap-0.5 text-warmGold font-bold transition">
+        <span class="text-base leading-none">👑</span>
+        <span class="text-[11px]">管理後台</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Firebase SDK (Modular v10) 與遊戲核心邏輯 -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    // =========================================================================
+    // 1. Firebase 設定（請填入您的 Firebase 專案金鑰以啟用雲端同步與教師後台）
+    // =========================================================================
+    const ADMIN_EMAIL = "misiva60@layjh.ttct.edu.tw";
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCt-ylGJaFM5MFHuPJRvw_XVYz6kr7_Kyc",
+  authDomain: "sakura-cafe-japanese.firebaseapp.com",
+  projectId: "sakura-cafe-japanese",
+  storageBucket: "sakura-cafe-japanese.firebasestorage.app",
+  messagingSenderId: "560462511198",
+  appId: "1:560462511198:web:3bc328459703b1a25c08cf",
+  measurementId: "G-EJNS1MVVH8"
+};
+
+    let auth = null;
+    let db = null;
+    const isFirebaseReady = Boolean(firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("YOUR_"));
+
+    if (isFirebaseReady) {
+      const app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+    }
+
+    // =========================================================================
+    // 2. 8 大主題章節與 48 單元原創題庫（櫻花町・旅人珈琲館）
+    // =========================================================================
+    const CHAPTERS = [
+      { id: 1, short: "第1章 問候問路", title: "第一章：初來乍到・櫻花町問路與自介", units: [1, 2, 3, 4, 5, 6] },
+      { id: 2, short: "第2章 咖啡點餐", title: "第二章：日常交流・咖啡館點餐與購物", units: [7, 8, 9, 10, 11, 12] },
+      { id: 3, short: "第3章 交通搭乘", title: "第三章：旅途啟程・願望表達與交通搭乘", units: [13, 14, 15, 16, 17, 18] },
+      { id: 4, short: "第4章 美食方位", title: "第四章：美食探索・口味客製與方位位置", units: [19, 20, 21, 22, 23, 24] },
+      { id: 5, short: "第5章 健康感想", title: "第五章：身心照料・健康狀況與感想比較", units: [25, 26, 27, 28, 29, 30] },
+      { id: 6, short: "第6章 邀約經驗", title: "第六章：深度漫遊・邀約問路與經驗分享", units: [31, 32, 33, 34, 35, 36] },
+      { id: 7, short: "第7章 住宿求助", title: "第七章：突發應對・住宿問題與遺失求助", units: [37, 38, 39, 40, 41, 42] },
+      { id: 8, short: "第8章 夢想展望", title: "第八章：夢想展望・傳聞轉述與未來規劃", units: [43, 44, 45, 46, 47, 48] }
+    ];
+
+    const BASE_UNITS = [
+      {
+        unit: 1, title: "請問旅人珈琲館在哪裡？",
+        vocab: [
+          { jp: "すみません", romaji: "sumimasen", zh: "請問／不好意思" },
+          { jp: "どこ", romaji: "doko", zh: "哪裡" },
+          { jp: "近く", romaji: "chikaku", zh: "附近" },
+          { jp: "一緒に行きましょう", romaji: "issho ni ikimashou", zh: "一起走吧" }
+        ],
+        sentence: {
+          zh: "請問，旅人珈琲館在哪裡？",
+          jpFull: "すみません、旅人カフェはどこですか。",
+          romaji: "Sumimasen, Tabibito-kafe wa doko desu ka.",
+          tokens: [
+            { text: "すみません、", pos: "感嘆詞", note: "向路人搭話的禮貌起手式" },
+            { text: "旅人カフェ", pos: "專有名詞", note: "旅人珈琲館" },
+            { text: "は", pos: "提示助詞", note: "寫作「は」讀作 wa，標示主題" },
+            { text: "どこ", pos: "疑問代名詞", note: "詢問地點「哪裡」" },
+            { text: "ですか。", pos: "助動詞+終助詞", note: "禮貌疑問句尾" }
+          ],
+          grammar: "詢問場所位置的基礎句型「【場所】は どこ ですか」。助詞「は」提示詢問的主題，句尾加上「ですか」構成疑問句。"
+        }
+      },
+      {
+        unit: 2, title: "我是小晴，是插畫家",
+        vocab: [
+          { jp: "はじめまして", romaji: "hajimemashite", zh: "初次見面" },
+          { jp: "イラストレーター", romaji: "irasutoreetaa", zh: "插畫家" },
+          { jp: "店長", romaji: "tenchou", zh: "店長" },
+          { jp: "よろしくお願いします", romaji: "yoroshiku onegai-shimasu", zh: "請多關照" }
+        ],
+        sentence: {
+          zh: "初次見面，我是小晴，是插畫家。",
+          jpFull: "はじめまして、ハルです。イラストレーターです。",
+          romaji: "Hajimemashite, Haru desu. Irasutoreetaa desu.",
+          tokens: [
+            { text: "はじめまして、", pos: "寒暄語", note: "第一次見面時的問候" },
+            { text: "ハル", pos: "人名(片假名)", note: "小晴的名字" },
+            { text: "です。", pos: "助動詞", note: "斷定助動詞，表示「是」" },
+            { text: "イラストレーター", pos: "名詞", note: "說明職業身分" },
+            { text: "です。", pos: "助動詞", note: "禮貌結尾" }
+          ],
+          grammar: "自我介紹時通常省略顯而易見的主語「私は（我）」，直接以「【名字】です。【身分】です。」連續說明姓名與職業。"
+        }
+      },
+      {
+        unit: 3, title: "我來自台灣",
+        vocab: [
+          { jp: "台湾", romaji: "Taiwan", zh: "台灣" },
+          { jp: "来ました", romaji: "kimashita", zh: "來了（過去式）" },
+          { jp: "京都", romaji: "Kyooto", zh: "京都" },
+          { jp: "そうですか", romaji: "soo desu ka", zh: "原來如此／是這樣啊" }
+        ],
+        sentence: {
+          zh: "我來自台灣。",
+          jpFull: "台湾から来ました。",
+          romaji: "Taiwan kara kimashita.",
+          tokens: [
+            { text: "台湾", pos: "地名", note: "出發地／故鄉" },
+            { text: "から", pos: "格助詞", note: "表示起點「從……」" },
+            { text: "来ました。", pos: "動詞過去式", note: "「来る（來）」的禮貌過去式" }
+          ],
+          grammar: "「【地名】から 来ました」用於介紹出身地。「から」標示起點，因「來到此地」是已發生的事實，動詞須用過去式「来ました」。"
+        }
+      },
+      {
+        unit: 4, title: "在大學學習建築",
+        vocab: [
+          { jp: "大学", romaji: "daigaku", zh: "大學" },
+          { jp: "建築", romaji: "kenchiku", zh: "建築" },
+          { jp: "勉強します", romaji: "benkyoo-shimasu", zh: "學習" },
+          { jp: "楽しみです", romaji: "tanoshimi desu", zh: "很期待" }
+        ],
+        sentence: {
+          zh: "我在京都的大學學習建築。",
+          jpFull: "京都の大学で建築を勉強します。",
+          romaji: "Kyooto no daigaku de kenchiku o benkyoo-shimasu.",
+          tokens: [
+            { text: "京都の大学", pos: "名詞片語", note: "「の」連接兩個名詞表所屬" },
+            { text: "で", pos: "格助詞", note: "標示動作發生的場所" },
+            { text: "建築", pos: "名詞", note: "動作的受詞" },
+            { text: "を", pos: "格助詞", note: "標示他動詞的受詞" },
+            { text: "勉強します。", pos: "動詞マス形", note: "表示習慣或未來計畫" }
+          ],
+          grammar: "助詞「で」接在場所名詞後，表示「在某地進行某動作」；「を」則接在受詞後，搭配動詞表達學習內容。"
+        }
+      },
+      {
+        unit: 5, title: "我是聽廣播學日語的",
+        vocab: [
+          { jp: "ラジオ", romaji: "rajio", zh: "廣播電台" },
+          { jp: "上手ですね", romaji: "joozu desu ne", zh: "很擅長呢" },
+          { jp: "まだまだです", romaji: "mada mada desu", zh: "還差得遠呢（謙辭）" },
+          { jp: "大丈夫", romaji: "daijoobu", zh: "沒問題" }
+        ],
+        sentence: {
+          zh: "我是透過網路學習日語的。",
+          jpFull: "インターネットで日本語を勉強しました。",
+          romaji: "Intaanetto de Nihongo o benkyoo-shimashita.",
+          tokens: [
+            { text: "インターネット", pos: "名詞", note: "學習的工具／手段" },
+            { text: "で", pos: "格助詞", note: "表示方法、手段或工具" },
+            { text: "日本語を", pos: "受詞+助詞", note: "學習的對象" },
+            { text: "勉強しました。", pos: "動詞過去式", note: "「します」改為過去式「しました」" }
+          ],
+          grammar: "助詞「で」除了表示場所，也可接在工具、媒介後方表示「用／透過……方式」。敘述過去經驗時動詞字尾改為「ました」。"
+        }
+      },
+      {
+        unit: 6, title: "這班電車開往京都站嗎？",
+        vocab: [
+          { jp: "この電車", romaji: "kono densha", zh: "這班電車" },
+          { jp: "行きます", romaji: "ikimasu", zh: "去／開往" },
+          { jp: "何番線", romaji: "nan-ban-sen", zh: "幾號月台" },
+          { jp: "わかりました", romaji: "wakarimashita", zh: "明白了" }
+        ],
+        sentence: {
+          zh: "請問這班巴士開往嵐山嗎？",
+          jpFull: "このバスは嵐山に行きますか。",
+          romaji: "Kono basu wa Arashiyama ni ikimasu ka.",
+          tokens: [
+            { text: "このバス", pos: "指示詞+名詞", note: "「この」必須直接修飾名詞" },
+            { text: "は", pos: "提示助詞", note: "標示句子主題" },
+            { text: "嵐山", pos: "名詞", note: "目的地" },
+            { text: "に", pos: "格助詞", note: "標示移動的目的地" },
+            { text: "行きますか。", pos: "動詞疑問形", note: "詢問是否前往" }
+          ],
+          grammar: "確認交通工具目的地時使用「この【交通工具】は【目的地】に行きますか」。助詞「に」接在場所後表示移動到達的方向。"
+        }
+      }
+    ];
+
+    const EXTRA_TEMPLATES = [
+      { title: "請再說慢一點", v: [["ゆっくり","yukkuri","慢慢地"],["話す","hanasu","說"],["もう一度","moo ichido","再一次"],["英語で","eego de","用英語"]], zh: "不好意思，請再說慢一點。", jp: "すみません、もう一度ゆっくり話してください。", rm: "Sumimasen, moo ichido yukkuri hanashite kudasai.", g: "「動詞テ形＋ください」表示禮貌地請對方做某事。「話す」的テ形為「話して」。" },
+      { title: "這是我朋友美咲", v: [["友達","tomodachi","朋友"],["妹","imooto","妹妹"],["同僚","dooryoo","同事"],["遅れてすみません","okurete sumimasen","抱歉遲到了"]], zh: "這是我朋友美咲。", jp: "友達の美咲さんです。", rm: "Tomodachi no Misaki-san desu.", g: "介紹他人時使用「【關係】の【姓名】さんです」。注意不可對自己的家人加上尊稱「さん」。" },
+      { title: "這個和菓子是什麼？", v: [["これ","kore","這個"],["それ","sore","那個"],["あれ","are","那個（遠處）"],["和菓子","wagashi","日式傳統點心"]], zh: "請問，這是什麼？", jp: "すみません、これは何ですか。", rm: "Sumimasen, kore wa nan desu ka.", g: "距離說話者近用「これ」，離聽話者近用「それ」，離兩者都遠用「あれ」。" },
+      { title: "這杯抹茶拿鐵多少錢？", v: [["いくら","ikura","多少錢"],["抹茶ラテ","matcha-rate","抹茶拿鐵"],["高い","takai","貴的"],["安い","yasui","便宜的"]], zh: "不好意思，這杯抹茶拿鐵多少錢？", jp: "すみません、この抹茶ラテはいくらですか。", rm: "Sumimasen, kono matcha-rate wa ikura desu ka.", g: "詢問價格使用疑問詞「いくら」，句型為「この【物品】は いくら ですか」。" },
+      { title: "有英文菜單嗎？", v: [["メニュー","menyuu","菜單"],["あります","arimasu","有（無生命物體）"],["ありません","arimasen","沒有"],["いらっしゃいませ","irasshaimase","歡迎光臨"]], zh: "請問，有英文菜單嗎？", jp: "すみません、英語のメニューはありますか。", rm: "Sumimasen, eego no menyuu wa arimasu ka.", g: "詢問店家是否有某樣物品時，使用表示存在的動詞「あります」搭配疑問助詞「か」。" },
+      { title: "這個御守真可愛", v: [["かわいい","kawaii","可愛的"],["おもしろい","omoshiroi","有趣的"],["大きい","ookii","大的"],["これをください","kore o kudasai","請給我這個"]], zh: "這個御守真可愛呢。", jp: "このお守りはかわいいですね。", rm: "Kono omamori wa kawaii desu ne.", g: "詞尾為「い」的形容詞稱為イ形容詞，可直接接「です」結尾，加上「ね」表示尋求對方認同。" }
+    ];
+
+    const ALL_UNITS = [...BASE_UNITS];
+    for (let u = 7; u <= 48; u++) {
+      const tpl = EXTRA_TEMPLATES[(u - 7) % EXTRA_TEMPLATES.length];
+      ALL_UNITS.push({
+        unit: u,
+        title: tpl.title,
+        vocab: tpl.v.map(item => ({ jp: item[0], romaji: item[1], zh: item[2] })),
+        sentence: {
+          zh: tpl.zh,
+          jpFull: tpl.jp,
+          romaji: tpl.rm,
+          tokens: tpl.jp.replace("。", "").split(/(、|は|を|に|で|の|が)/).filter(Boolean).map(t => ({
+            text: t,
+            pos: ["は","を","に","で","の","が"].includes(t) ? "助詞" : "核心詞彙",
+            note: "單元重點成分"
+          })),
+          grammar: tpl.g
+        }
+      });
+    }
+
+    // =========================================================================
+    // 3. 應用程式狀態管理（本地 + Firebase 雲端雙向同步 + 模擬管理員預覽）
+    // =========================================================================
+    let currentUser = null;
+    let isDemoAdminMode = false;
+    let expandedChapters = new Set([1]); // 手風琴折疊狀態：預設展開第 1 章
+    let cachedAllStudents = [];
+
+    let userProgress = {
+      name: "訪客旅人",
+      email: "",
+      score: 0,
+      clearedUnits: [],
+      unitMatchDone: [],
+      unitSentenceDone: [],
+      mistakes: {},
+      unitRecords: {},       // { [unitNum]: { matchAttempts, matchBestScore, matchMistakes, matchCompleted, lastMatchDate, sentenceAttempts, sentencePassedCount, sentenceStatus, lastUserSentence, lastSentenceResult, lastSentenceDate } }
+      attemptHistory: [],    // 最近作答時間軸紀錄（最多保留 30 筆，畫面呈現最近 10 筆）
+      lastSession: null,     // { unit, mode: 'match'|'sentence', passed: boolean, detail: string, timestamp: string }
+      updatedAt: new Date().toISOString()
+    };
+
+    const LOCAL_KEY = "sakura_cafe_mobile_v5";
+
+    function ensureUnitRecord(uNum) {
+      if (!userProgress.unitRecords) userProgress.unitRecords = {};
+      if (!userProgress.unitRecords[uNum]) {
+        userProgress.unitRecords[uNum] = {
+          matchAttempts: 0,
+          matchBestScore: 0,
+          matchMistakes: 0,
+          matchCompleted: userProgress.unitMatchDone.includes(uNum),
+          lastMatchDate: null,
+          sentenceAttempts: 0,
+          sentencePassedCount: userProgress.unitSentenceDone.includes(uNum) ? 1 : 0,
+          sentenceStatus: userProgress.unitSentenceDone.includes(uNum) ? "passed" : "unstarted",
+          lastUserSentence: "",
+          lastSentenceResult: null,
+          lastSentenceDate: null
+        };
+      }
+      return userProgress.unitRecords[uNum];
+    }
+
+    function recordAttemptLog({ unit, mode, passed, scoreDelta, detail }) {
+      if (!Array.isArray(userProgress.attemptHistory)) userProgress.attemptHistory = [];
+      const uData = ALL_UNITS.find(u => u.unit === unit);
+      const nowIso = new Date().toISOString();
+
+      userProgress.attemptHistory.unshift({
+        id: Date.now() + Math.random().toString(36).slice(2, 6),
+        unit,
+        unitTitle: uData ? uData.title : `Unit ${unit}`,
+        mode,       // 'match' | 'sentence'
+        passed,     // boolean
+        scoreDelta, // number
+        detail,     // string
+        timestamp: nowIso
+      });
+
+      if (userProgress.attemptHistory.length > 30) {
+        userProgress.attemptHistory = userProgress.attemptHistory.slice(0, 30);
+      }
+
+      userProgress.lastSession = {
+        unit,
+        unitTitle: uData ? uData.title : `Unit ${unit}`,
+        mode,
+        passed,
+        detail,
+        timestamp: nowIso
+      };
+    }
+
+    function formatShortDate(isoStr) {
+      if (!isoStr) return "";
+      try {
+        const d = new Date(isoStr);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, "0");
+        const day = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        return `${y}/${m}/${day} ${hh}:${mm}`;
+      } catch (e) {
+        return "";
+      }
+    }
+
+    function loadLocalProgress() {
+      try {
+        const raw = localStorage.getItem(LOCAL_KEY) || localStorage.getItem("sakura_cafe_mobile_v4");
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          userProgress = {
+            ...userProgress,
+            ...parsed,
+            unitRecords: parsed.unitRecords || {},
+            attemptHistory: parsed.attemptHistory || [],
+            lastSession: parsed.lastSession || null
+          };
+        }
+      } catch (e) {}
+    }
+
+    async function saveProgress() {
+      userProgress.updatedAt = new Date().toISOString();
+      userProgress.clearedUnits = userProgress.unitMatchDone.filter(u => userProgress.unitSentenceDone.includes(u));
+      localStorage.setItem(LOCAL_KEY, JSON.stringify(userProgress));
+      updateHeaderUI();
+      renderResumeCard();
+      renderChapterPills();
+      renderChapters();
+      renderMistakesList();
+      renderHistoryDashboard();
+
+      if (isFirebaseReady && currentUser) {
+        try {
+          await setDoc(doc(db, "users", currentUser.uid), {
+            uid: currentUser.uid,
+            name: currentUser.displayName || "未命名學生",
+            email: currentUser.email,
+            score: userProgress.score,
+            clearedUnits: userProgress.clearedUnits,
+            unitMatchDone: userProgress.unitMatchDone,
+            unitSentenceDone: userProgress.unitSentenceDone,
+            mistakes: userProgress.mistakes,
+            unitRecords: userProgress.unitRecords,
+            attemptHistory: userProgress.attemptHistory,
+            lastSession: userProgress.lastSession,
+            updatedAt: userProgress.updatedAt
+          }, { merge: true });
+        } catch (err) {
+          console.error("雲端成績寫入失敗:", err);
+        }
+      }
+    }
+
+    // 重置進度 Modal 控制
+    window.openResetModal = () => document.getElementById("reset-modal").classList.remove("hidden");
+    window.closeResetModal = () => document.getElementById("reset-modal").classList.add("hidden");
+    window.confirmResetData = async () => {
+      userProgress.score = 0;
+      userProgress.clearedUnits = [];
+      userProgress.unitMatchDone = [];
+      userProgress.unitSentenceDone = [];
+      userProgress.mistakes = {};
+      userProgress.unitRecords = {};
+      userProgress.attemptHistory = [];
+      userProgress.lastSession = null;
+      await saveProgress();
+      initMatchBoard();
+      initSentencePuzzle();
+      window.closeResetModal();
+      showToast("已重置所有學習與作答紀錄！", "info");
+    };
+
+    // =========================================================================
+    // 4. Toast 提示與語音朗讀
+    // =========================================================================
+    function showToast(msg, type = "info") {
+      const container = document.getElementById("toast-container");
+      if (!container) return;
+      const el = document.createElement("div");
+      const colorCls =
+        type === "success" ? "bg-matcha text-white" :
+        type === "error" ? "bg-terracotta text-white" :
+        type === "gold" ? "bg-warmGold text-white" :
+        "bg-indigoJp text-white";
+      el.className = `${colorCls} text-xs font-bold px-4 py-2.5 rounded-2xl shadow-lg animate-pop text-center`;
+      el.textContent = msg;
+      container.appendChild(el);
+      setTimeout(() => el.remove(), 3200);
+    }
+
+    function speakJP(text) {
+      if (!("speechSynthesis" in window) || !text) return;
+      try {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = "ja-JP";
+        u.rate = 0.92;
+        window.speechSynthesis.speak(u);
+      } catch (e) {}
+    }
+
+    function hasAdminAccess() {
+      const isRealAdmin = currentUser && (currentUser.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase();
+      return Boolean(isRealAdmin || isDemoAdminMode);
+    }
+
+    function syncAdminNavVisibility() {
+      const adminTabBtn = document.getElementById("tab-admin-btn");
+      if (adminTabBtn) {
+        adminTabBtn.classList.toggle("hidden", !hasAdminAccess());
+      }
+    }
+
+    function copyCurrentHostname() {
+      const host = window.location.hostname || "localhost";
+      try {
+        const tempInput = document.createElement("input");
+        tempInput.value = host;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput);
+      } catch (e) {}
+      return host;
+    }
+
+    document.getElementById("btn-copy-domain").addEventListener("click", () => {
+      const host = copyCurrentHostname();
+      showToast(`📋 已複製網域「${host}」，請貼到 Firebase 已授權網域！`, "info");
+    });
+
+    document.getElementById("btn-modal-copy-domain").addEventListener("click", () => {
+      const host = copyCurrentHostname();
+      showToast(`📋 已複製網域「${host}」！`, "success");
+    });
+
+    document.getElementById("btn-toggle-demo-admin").addEventListener("click", () => {
+      isDemoAdminMode = !isDemoAdminMode;
+      syncAdminNavVisibility();
+      const btn = document.getElementById("btn-toggle-demo-admin");
+      if (isDemoAdminMode) {
+        btn.textContent = "👑 退出管理員預覽";
+        showToast("👑 已開啟模擬管理員預覽，底部導覽列已解鎖「管理後台」！", "gold");
+        switchTab("admin");
+      } else {
+        btn.textContent = "👑 模擬管理員預覽";
+        showToast("已關閉模擬管理員預覽模式", "info");
+        if (!document.getElementById("view-admin").classList.contains("hidden")) {
+          switchTab("units");
+        }
+      }
+    });
+
+    document.getElementById("btn-sim-admin-login").addEventListener("click", () => {
+      document.getElementById("domain-help-modal").classList.add("hidden");
+      if (!isDemoAdminMode) {
+        document.getElementById("btn-toggle-demo-admin").click();
+      } else {
+        switchTab("admin");
+      }
+    });
+
+    document.getElementById("btn-google-login").addEventListener("click", async () => {
+      if (!isFirebaseReady) {
+        showToast("尚未填入 Firebase 金鑰（可先點上方「模擬管理員預覽」體驗後台）", "gold");
+        return;
+      }
+      if (window.location.protocol === "file:") {
+        showToast("⚠️ 請透過網址（如 GitHub Pages 或 Local Server）開啟網頁，直接雙擊 HTML 檔會被 Google 阻擋登入！", "error");
+        return;
+      }
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: "select_account" });
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        if (err.code === "auth/configuration-not-found") {
+          showToast("⚠️ Firebase 後台尚未開啟「Authentication > Google 登入」，請到 Firebase Console 啟用！", "error");
+        } else if (err.code === "auth/unauthorized-domain") {
+          const currentHost = copyCurrentHostname();
+          document.getElementById("modal-current-domain").textContent = currentHost;
+          document.getElementById("domain-help-modal").classList.remove("hidden");
+        } else if (err.code === "auth/popup-blocked") {
+          showToast("⚠️ 瀏覽器封鎖了彈出視窗，請允許此網站顯示彈出式視窗後再試！", "error");
+        } else {
+          showToast("Google 登入失敗（" + (err.code || err.message) + "）", "error");
+        }
+        console.warn("Google Login Notice:", err.code || err.message);
+      }
+    });
+
+    if (isFirebaseReady) {
+      onAuthStateChanged(auth, async (user) => {
+        currentUser = user;
+        const authArea = document.getElementById("auth-area");
+        const syncBanner = document.getElementById("sync-banner");
+
+        if (user) {
+          const docRef = doc(db, "users", user.uid);
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const cloudData = snap.data();
+            // 合併本機與雲端進度（取較高積分與聯集通關紀錄，避免切換帳號遺失作答）
+            const mergedScore = Math.max(userProgress.score || 0, cloudData.score || 0);
+            const mergedMatch = Array.from(new Set([...(userProgress.unitMatchDone || []), ...(cloudData.unitMatchDone || [])]));
+            const mergedSent = Array.from(new Set([...(userProgress.unitSentenceDone || []), ...(cloudData.unitSentenceDone || [])]));
+            const mergedRecords = { ...(userProgress.unitRecords || {}), ...(cloudData.unitRecords || {}) };
+            const mergedHistory = [...(cloudData.attemptHistory || []), ...(userProgress.attemptHistory || [])]
+              .filter((item, idx, arr) => arr.findIndex(x => x.timestamp === item.timestamp && x.unit === item.unit) === idx)
+              .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+              .slice(0, 30);
+
+            userProgress = {
+              ...userProgress,
+              ...cloudData,
+              name: user.displayName || cloudData.name || "學生",
+              email: user.email,
+              score: mergedScore,
+              unitMatchDone: mergedMatch,
+              unitSentenceDone: mergedSent,
+              unitRecords: mergedRecords,
+              attemptHistory: mergedHistory,
+              lastSession: cloudData.lastSession || userProgress.lastSession
+            };
+            await saveProgress();
+          } else {
+            userProgress.name = user.displayName || "學生";
+            userProgress.email = user.email;
+            await saveProgress();
+          }
+
+          const isRealAdmin = (user.email || "").toLowerCase() === ADMIN_EMAIL.toLowerCase();
+          syncAdminNavVisibility();
+
+          if (isRealAdmin) {
+            syncBanner.className = "bg-amber-100 border-b border-amber-300 text-amber-950 text-xs py-1.5 px-3 text-center font-medium";
+            syncBanner.innerHTML = `👑 管理員 <b>${user.displayName}</b> 已登入，底部導覽列已解鎖「管理後台」！`;
+          } else {
+            syncBanner.className = "bg-matchaSoft border-b border-matcha/30 text-matcha text-xs py-1.5 px-3 text-center font-medium";
+            syncBanner.innerHTML = `✅ 已綁定 Google 帳號（${user.email}），學習成績即時雲端同步中`;
+          }
+
+          authArea.innerHTML = `
+            <button id="btn-logout" title="點擊登出帳號" class="bg-indigoLight/90 hover:bg-terracotta border border-blue-300/30 rounded-xl pl-1.5 pr-2.5 py-1 flex items-center gap-1.5 transition min-h-[40px]">
+              <img src="${user.photoURL || ''}" class="w-6 h-6 rounded-full bg-white/20" alt="" />
+              <span class="text-xs font-bold max-w-[60px] truncate">${user.displayName}</span>
+              <span class="text-[10px] text-rose-200">登出</span>
+            </button>
+          `;
+          document.getElementById("btn-logout").addEventListener("click", () => signOut(auth));
+        } else {
+          syncAdminNavVisibility();
+        }
+        updateHeaderUI();
+        renderResumeCard();
+        renderChapters();
+        renderMistakesList();
+        renderHistoryDashboard();
+      });
+    }
+
+    // =========================================================================
+    // 6. 稱號計算、頂部狀態列更新與分頁切換
+    // =========================================================================
+    function getRankLabel(score) {
+      if (score >= 2500) return "👑 櫻花町日本語大師";
+      if (score >= 1000) return "🌸 京都旅行達人";
+      if (score >= 300) return "☕ 珈琲館常客";
+      return "🌱 見習旅人";
+    }
+
+    function updateHeaderUI() {
+      document.getElementById("header-rank-label").textContent = getRankLabel(userProgress.score);
+      document.getElementById("ui-score").textContent = userProgress.score.toLocaleString();
+      document.getElementById("ui-cleared-count").textContent = `${userProgress.clearedUnits.length}/48`;
+
+      const mistakeCount = Object.keys(userProgress.mistakes || {}).length;
+      const badge = document.getElementById("ui-mistake-badge");
+      badge.textContent = mistakeCount;
+      badge.classList.toggle("hidden", mistakeCount === 0);
+    }
+
+    function switchTab(tabName) {
+      document.querySelectorAll(".tab-btn").forEach(btn => {
+        const isActive = btn.dataset.tab === tabName;
+        btn.classList.toggle("text-indigoJp", isActive && tabName !== "admin");
+        btn.classList.toggle("font-bold", isActive || tabName === "admin");
+        btn.classList.toggle("bg-sakuraSoft/60", isActive);
+        btn.classList.toggle("text-gray-500", !isActive && btn.dataset.tab !== "admin");
+      });
+
+      ["units", "match", "sentence", "mistakes", "history", "admin"].forEach(v => {
+        document.getElementById(`view-${v}`).classList.toggle("hidden", v !== tabName);
+      });
+
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      if (tabName === "history") renderHistoryDashboard();
+      if (tabName === "admin") loadAdminDashboard();
+    }
+
+    document.querySelectorAll(".tab-btn").forEach(btn => {
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    });
+
+    // =========================================================================
+    // 7. 上次學習紀錄卡片（Resume Card）與手風琴折疊章節渲染
+    // =========================================================================
+    function renderResumeCard() {
+      const card = document.getElementById("resume-last-card");
+      const last = userProgress.lastSession;
+
+      if (!last || !last.unit) {
+        card.classList.add("hidden");
+        return;
+      }
+
+      card.classList.remove("hidden");
+      const uData = ALL_UNITS.find(u => u.unit === last.unit);
+      const uTitle = uData ? uData.title : (last.unitTitle || "");
+
+      document.getElementById("resume-last-time").textContent = formatShortDate(last.timestamp);
+      document.getElementById("resume-unit-code").textContent = `UNIT ${String(last.unit).padStart(2, "0")}`;
+      document.getElementById("resume-unit-title").textContent = uTitle;
+      document.getElementById("resume-total-score").textContent = userProgress.score.toLocaleString();
+
+      const modeBadge = document.getElementById("resume-mode-badge");
+      modeBadge.textContent = last.mode === "match" ? "🎴 單字配對" : "🧩 拼接造句";
+
+      const resBadge = document.getElementById("resume-result-badge");
+      if (last.passed) {
+        resBadge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-matchaSoft text-matcha";
+        resBadge.textContent = "✅ 已通過";
+      } else {
+        resBadge.className = "text-[11px] font-bold px-2 py-0.5 rounded bg-sakuraSoft text-terracotta";
+        resBadge.textContent = "⚠️ 待重練";
+      }
+
+      document.getElementById("resume-last-detail").textContent = last.detail ? `上次紀錄：${last.detail}` : "";
+
+      const clearedCount = userProgress.clearedUnits.length;
+      const pct = Math.round((clearedCount / 48) * 100);
+      document.getElementById("resume-progress-text").textContent = `${clearedCount} / 48 單元 (${pct}%)`;
+      document.getElementById("resume-progress-bar").style.width = `${pct}%`;
+
+      // 若上次該單元已通關，智慧推薦下一關；若未通過則直接接續該單元
+      const nextUnit = last.passed && last.unit < 48 ? last.unit + 1 : last.unit;
+      const actionText = last.passed && last.unit < 48 ? `▶ 挑戰下一關 (Unit ${String(nextUnit).padStart(2, "0")})` : `▶ 繼續上次進度 (Unit ${String(last.unit).padStart(2, "0")})`;
+      document.getElementById("resume-btn-sub").textContent = "";
+      document.getElementById("btn-resume-continue").firstElementChild.textContent = actionText;
+
+      document.getElementById("btn-resume-continue").onclick = () => {
+        if (last.passed && last.unit < 48) {
+          window.startUnitMatch(nextUnit);
+        } else if (last.mode === "match") {
+          window.startUnitMatch(last.unit);
+        } else {
+          window.startUnitSentence(last.unit);
+        }
+      };
+    }
+
+    function renderChapterPills() {
+      const container = document.getElementById("chapter-pills");
+      const expandAllBtn = `
+        <button id="btn-expand-all-ch" class="px-3 py-2 rounded-full text-xs font-bold whitespace-nowrap bg-washi text-indigoJp border border-washiDark active:scale-95 min-h-[36px]">
+          ${expandedChapters.size === CHAPTERS.length ? "全部收合" : "展開全部"}
+        </button>
+      `;
+      const chBtns = CHAPTERS.map(ch => {
+        const isOpen = expandedChapters.has(ch.id);
+        return `
+          <button data-ch="${ch.id}" class="ch-pill px-3 py-2 rounded-full text-xs font-bold whitespace-nowrap transition active:scale-95 min-h-[36px] ${
+            isOpen ? "bg-indigoJp text-white" : "bg-washi text-indigoJp border border-washiDark"
+          }">${ch.short}</button>
+        `;
+      }).join("");
+
+      container.innerHTML = expandAllBtn + chBtns;
+
+      document.getElementById("btn-expand-all-ch").addEventListener("click", () => {
+        if (expandedChapters.size === CHAPTERS.length) {
+          expandedChapters.clear();
+          expandedChapters.add(1);
+        } else {
+          CHAPTERS.forEach(c => expandedChapters.add(c.id));
+        }
+        renderChapterPills();
+        renderChapters();
+      });
+
+      container.querySelectorAll(".ch-pill").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const chId = Number(btn.dataset.ch);
+          expandedChapters.clear();
+          expandedChapters.add(chId);
+          renderChapterPills();
+          renderChapters();
+        });
+      });
+    }
+
+    window.toggleChapterAccordion = function(chId) {
+      if (expandedChapters.has(chId)) {
+        expandedChapters.delete(chId);
+      } else {
+        expandedChapters.add(chId);
+      }
+      renderChapterPills();
+      renderChapters();
+    };
+
+    function renderChapters() {
+      const container = document.getElementById("chapters-container");
+
+      container.innerHTML = CHAPTERS.map(ch => {
+        const isOpen = expandedChapters.has(ch.id);
+        const clearedInCh = ch.units.filter(u => userProgress.clearedUnits.includes(u)).length;
+
+        const cardsHtml = isOpen ? `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2.5 animate-pop">
+            ${ch.units.map(uNum => {
+              const uData = ALL_UNITS.find(x => x.unit === uNum);
+              const matchOk = userProgress.unitMatchDone.includes(uNum);
+              const sentOk = userProgress.unitSentenceDone.includes(uNum);
+              const isCleared = matchOk && sentOk;
+              const rec = userProgress.unitRecords ? userProgress.unitRecords[uNum] : null;
+              const hasFailedSent = rec && rec.sentenceStatus === "failed";
+
+              let statusBadge = `<span class="text-xs px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-medium">○ 未挑戰</span>`;
+              let cardBorder = "border-washiDark";
+              if (isCleared) {
+                statusBadge = `<span class="text-xs px-2.5 py-0.5 rounded-full bg-matchaSoft text-matcha font-bold">★ 已通關</span>`;
+                cardBorder = "border-matcha/50 bg-matchaSoft/15";
+              } else if (hasFailedSent) {
+                statusBadge = `<span class="text-xs px-2.5 py-0.5 rounded-full bg-sakuraSoft text-terracotta font-bold">⚠️ 待重練</span>`;
+                cardBorder = "border-terracotta/40";
+              } else if (matchOk || sentOk || (rec && (rec.matchAttempts > 0 || rec.sentenceAttempts > 0))) {
+                statusBadge = `<span class="text-xs px-2.5 py-0.5 rounded-full bg-goldSoft text-amber-800 font-bold">◐ 進行中</span>`;
+                cardBorder = "border-warmGold/50";
+              }
+
+              const attemptSummary = rec && (rec.matchAttempts > 0 || rec.sentenceAttempts > 0)
+                ? `<div class="text-[11px] text-gray-500 bg-washi/80 px-2.5 py-1 rounded-lg flex items-center justify-between">
+                     <span>配對 ${rec.matchAttempts || 0} 次｜造句 ${rec.sentenceAttempts || 0} 次</span>
+                     ${rec.lastSentenceDate || rec.lastMatchDate ? `<span>${formatShortDate(rec.lastSentenceDate || rec.lastMatchDate).slice(5, 10)}</span>` : ""}
+                   </div>`
+                : "";
+
+              return `
+                <div class="washi-card rounded-2xl p-3.5 border ${cardBorder} flex flex-col justify-between gap-2.5">
+                  <div>
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="text-xs font-extrabold text-sakura">UNIT ${String(uNum).padStart(2, '0')}</span>
+                      ${statusBadge}
+                    </div>
+                    <h4 class="font-maru font-bold text-base text-ink mt-1 leading-snug">${uData.title}</h4>
+                    <div class="flex items-center gap-3 mt-1.5 text-xs text-gray-500">
+                      <span class="${matchOk ? 'text-matcha font-bold' : ''}">${matchOk ? '☑' : '☐'} 單字配對</span>
+                      <span class="${sentOk ? 'text-matcha font-bold' : ''}">${sentOk ? '☑' : '☐'} 拼造句</span>
+                    </div>
+                  </div>
+                  ${attemptSummary}
+
+                  <!-- 大尺寸雙按鈕（min-h-[48px] 單手大拇指輕鬆點擊） -->
+                  <div class="grid grid-cols-2 gap-2">
+                    <button onclick="window.startUnitMatch(${uNum})" class="min-h-[48px] rounded-xl bg-washi hover:bg-washiDark active:scale-95 text-indigoJp font-bold text-xs sm:text-sm border border-washiDark transition flex items-center justify-center gap-1">
+                      <span>🎴</span><span>單字配對</span>
+                    </button>
+                    <button onclick="window.startUnitSentence(${uNum})" class="min-h-[48px] rounded-xl bg-indigoJp hover:bg-indigoLight active:scale-95 text-white font-bold text-xs sm:text-sm shadow-xs transition flex items-center justify-center gap-1">
+                      <span>🧩</span><span>拼造句</span>
+                    </button>
+                  </div>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        ` : "";
+
+        return `
+          <div class="washi-card rounded-2xl p-3.5 transition">
+            <button onclick="window.toggleChapterAccordion(${ch.id})" class="w-full min-h-[48px] flex items-center justify-between gap-2 text-left active:scale-[0.99] transition">
+              <div class="min-w-0">
+                <h3 class="font-maru font-bold text-sm sm:text-base text-indigoJp border-l-4 border-sakura pl-2.5 leading-snug">${ch.title}</h3>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <span class="text-xs font-bold px-2.5 py-1 rounded-full ${clearedInCh === ch.units.length ? 'bg-matchaSoft text-matcha' : 'bg-washi text-indigoJp'}">
+                  ${clearedInCh}/${ch.units.length}
+                </span>
+                <span class="text-indigoJp font-bold text-xs transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}">▼</span>
+              </div>
+            </button>
+            ${cardsHtml}
+          </div>
+        `;
+      }).join("");
+    }
+
+    // =========================================================================
+    // 8. 單字配對消消樂邏輯（手機並排雙欄觸控版 + 完整作答紀錄）
+    // =========================================================================
+    let activeMatchUnit = 1;
+    let selectedJpIdx = null;
+    let matchedPairCount = 0;
+    let currentRoundMistakes = 0;
+    let currentRoundScore = 0;
+
+    function populateUnitSelects() {
+      const opts = ALL_UNITS.map(u => `<option value="${u.unit}">Unit ${String(u.unit).padStart(2,'0')}｜${u.title}</option>`).join("");
+      document.getElementById("match-unit-select").innerHTML = opts;
+      document.getElementById("sentence-unit-select").innerHTML = opts;
+    }
+
+    window.startUnitMatch = function(uNum) {
+      activeMatchUnit = uNum;
+      document.getElementById("match-unit-select").value = uNum;
+      switchTab("match");
+      initMatchBoard();
+    };
+
+    document.getElementById("match-unit-select").addEventListener("change", (e) => {
+      activeMatchUnit = Number(e.target.value);
+      initMatchBoard();
+    });
+    document.getElementById("toggle-romaji").addEventListener("change", initMatchBoard);
+    document.getElementById("btn-next-sentence-from-match").addEventListener("click", () => {
+      window.startUnitSentence(activeMatchUnit);
+    });
+
+    function initMatchBoard() {
+      const uData = ALL_UNITS.find(u => u.unit === activeMatchUnit);
+      const showRomaji = document.getElementById("toggle-romaji").checked;
+      selectedJpIdx = null;
+      matchedPairCount = 0;
+      currentRoundMistakes = 0;
+      currentRoundScore = 0;
+      const rec = ensureUnitRecord(activeMatchUnit);
+      const prevBadge = rec.matchAttempts > 0 ? `（已挑戰 ${rec.matchAttempts} 次）` : "";
+      document.getElementById("match-unit-status").textContent = `配對進度：0 / ${uData.vocab.length} ${prevBadge}`;
+
+      const jpItems = uData.vocab.map((v, idx) => ({ ...v, idx })).sort(() => Math.random() - 0.5);
+      const zhItems = uData.vocab.map((v, idx) => ({ ...v, idx })).sort(() => Math.random() - 0.5);
+
+      const jpCol = document.getElementById("match-jp-col");
+      const zhCol = document.getElementById("match-zh-col");
+
+      jpCol.innerHTML = jpItems.map(item => `
+        <button data-idx="${item.idx}" data-jp="${item.jp}" class="jp-card match-btn w-full min-h-[72px] text-left p-3 rounded-2xl border-2 border-washiDark bg-white shadow-xs flex flex-col justify-center">
+          <div class="font-jp font-bold text-base text-indigoJp leading-snug break-words">${item.jp}</div>
+          ${showRomaji ? `<div class="text-xs font-mono text-gray-500 mt-0.5 leading-tight">${item.romaji}</div>` : ""}
+        </button>
+      `).join("");
+
+      zhCol.innerHTML = zhItems.map(item => `
+        <button data-idx="${item.idx}" class="zh-card match-btn w-full min-h-[72px] text-left p-3 rounded-2xl border-2 border-washiDark bg-white shadow-xs font-bold text-sm sm:text-base text-ink leading-snug flex items-center">
+          ${item.zh}
+        </button>
+      `).join("");
+
+      jpCol.querySelectorAll(".jp-card").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (btn.disabled) return;
+          speakJP(btn.dataset.jp);
+          jpCol.querySelectorAll(".jp-card").forEach(b => b.classList.remove("selected"));
+          btn.classList.add("selected");
+          selectedJpIdx = btn.dataset.idx;
+        });
+      });
+
+      zhCol.querySelectorAll(".zh-card").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          if (btn.disabled || selectedJpIdx === null) {
+            if (selectedJpIdx === null && !btn.disabled) {
+              showToast("請先點擊左側的日語單字卡！", "info");
+            }
+            return;
+          }
+          const jpBtn = jpCol.querySelector(`.jp-card[data-idx="${selectedJpIdx}"]`);
+          if (btn.dataset.idx === selectedJpIdx) {
+            btn.disabled = true;
+            jpBtn.disabled = true;
+            jpBtn.classList.remove("selected");
+            btn.classList.add("matched");
+            jpBtn.classList.add("matched");
+
+            selectedJpIdx = null;
+            matchedPairCount++;
+            currentRoundScore += 10;
+            userProgress.score += 10;
+            document.getElementById("match-unit-status").textContent = `配對進度：${matchedPairCount} / ${uData.vocab.length}`;
+
+            if (matchedPairCount === uData.vocab.length) {
+              const rec = ensureUnitRecord(activeMatchUnit);
+              rec.matchAttempts += 1;
+              rec.matchMistakes += currentRoundMistakes;
+              rec.matchBestScore = Math.max(rec.matchBestScore || 0, currentRoundScore);
+              rec.matchCompleted = true;
+              rec.lastMatchDate = new Date().toISOString();
+
+              if (!userProgress.unitMatchDone.includes(activeMatchUnit)) {
+                userProgress.unitMatchDone.push(activeMatchUnit);
+              }
+              recordAttemptLog({
+                unit: activeMatchUnit,
+                mode: "match",
+                passed: true,
+                scoreDelta: currentRoundScore,
+                detail: `完成 ${uData.vocab.length} 組單字配對（失誤 ${currentRoundMistakes} 次）`
+              });
+              document.getElementById("match-unit-status").textContent = `🎉 本單元單字全部完成！`;
+              showToast(`🎉 Unit ${activeMatchUnit} 單字配對通關！+${currentRoundScore} 分`, "success");
+            } else {
+              showToast("配對正確！+10 分", "success");
+            }
+            await saveProgress();
+          } else {
+            currentRoundMistakes++;
+            btn.classList.add("animate-shake", "border-terracotta", "bg-sakuraSoft");
+            setTimeout(() => btn.classList.remove("animate-shake", "border-terracotta", "bg-sakuraSoft"), 350);
+          }
+        });
+      });
+    }
+
+    // =========================================================================
+    // 9. 拼接造句挑戰邏輯（大尺寸觸控積木 min-h-[48px]）
+    // =========================================================================
+    let activeSentenceUnit = 1;
+    let builtTokens = [];
+    let isMistakeDrillMode = false;
+
+    window.startUnitSentence = function(uNum, drillMode = false) {
+      activeSentenceUnit = uNum;
+      isMistakeDrillMode = drillMode;
+      document.getElementById("sentence-unit-select").value = uNum;
+      document.getElementById("sentence-mode-tag").classList.toggle("hidden", !drillMode);
+      switchTab("sentence");
+      initSentencePuzzle();
+    };
+
+    window.exitDrillMode = function() {
+      isMistakeDrillMode = false;
+      document.getElementById("sentence-mode-tag").classList.add("hidden");
+    };
+
+    document.getElementById("sentence-unit-select").addEventListener("change", (e) => {
+      window.exitDrillMode();
+      activeSentenceUnit = Number(e.target.value);
+      initSentencePuzzle();
+    });
+
+    document.getElementById("btn-prev-unit").addEventListener("click", () => {
+      if (activeSentenceUnit > 1) window.startUnitSentence(activeSentenceUnit - 1);
+    });
+    document.getElementById("btn-next-unit").addEventListener("click", () => {
+      if (activeSentenceUnit < 48) window.startUnitSentence(activeSentenceUnit + 1);
+    });
+
+    function initSentencePuzzle() {
+      const uData = ALL_UNITS.find(u => u.unit === activeSentenceUnit);
+      builtTokens = [];
+      document.getElementById("q-unit-badge").textContent = `UNIT ${String(uData.unit).padStart(2, '0')}｜${uData.title}`;
+      document.getElementById("q-prompt-zh").textContent = uData.sentence.zh;
+      document.getElementById("sentence-feedback-msg").textContent = "";
+      document.getElementById("grammar-explanation-box").classList.add("hidden");
+      document.getElementById("btn-speak-answer").classList.add("hidden");
+
+      // 渲染「上次作答紀錄提示框」
+      renderSentencePrevAttemptBox(uData);
+
+      const shuffled = uData.sentence.tokens.map((t, i) => ({ text: t.text, id: i })).sort(() => Math.random() - 0.5);
+      const bank = document.getElementById("word-bank");
+      bank.innerHTML = shuffled.map(tok => `
+        <button data-id="${tok.id}" data-text="${tok.text}" class="bank-chip font-jp bg-white active:scale-95 border-2 border-indigoJp/25 hover:border-indigoJp px-4 py-2.5 min-h-[48px] rounded-xl font-bold text-base text-indigoJp shadow-xs transition">
+          ${tok.text}
+        </button>
+      `).join("");
+
+      bank.querySelectorAll(".bank-chip").forEach(chip => {
+        chip.addEventListener("click", () => {
+          if (chip.disabled) return;
+          speakJP(chip.dataset.text);
+          chip.disabled = true;
+          chip.classList.add("opacity-25");
+          builtTokens.push({ id: chip.dataset.id, text: chip.dataset.text });
+          renderDropzone();
+        });
+      });
+      renderDropzone();
+    }
+
+    function renderSentencePrevAttemptBox(uData) {
+      const box = document.getElementById("sentence-prev-attempt-box");
+      const rec = userProgress.unitRecords ? userProgress.unitRecords[activeSentenceUnit] : null;
+
+      if (!rec || !rec.lastUserSentence) {
+        box.classList.add("hidden");
+        return;
+      }
+
+      box.classList.remove("hidden");
+      const statusLabel = document.getElementById("prev-attempt-status-label");
+      const metaLabel = document.getElementById("prev-attempt-meta");
+      const sentenceEl = document.getElementById("prev-attempt-sentence");
+
+      metaLabel.textContent = `${formatShortDate(rec.lastSentenceDate)}（共作答 ${rec.sentenceAttempts} 次）`;
+      sentenceEl.textContent = rec.lastUserSentence;
+
+      if (rec.lastSentenceResult === "passed" || rec.sentenceStatus === "passed") {
+        box.className = "rounded-2xl p-3.5 border border-matcha/40 bg-matchaSoft/50 text-xs space-y-2 animate-pop";
+        statusLabel.className = "font-bold text-matcha";
+        statusLabel.textContent = "✅ 上次作答已通過此題";
+        sentenceEl.className = "font-jp text-sm font-bold text-indigoJp bg-white/95 px-3 py-2 rounded-xl border border-matcha/30 break-all";
+      } else {
+        box.className = "rounded-2xl p-3.5 border border-terracotta/40 bg-sakuraSoft/60 text-xs space-y-2 animate-pop";
+        statusLabel.className = "font-bold text-terracotta";
+        statusLabel.textContent = "⚠️ 上次作答答錯紀錄（對照修正）";
+        sentenceEl.className = "font-jp text-sm font-bold text-terracotta bg-white/95 px-3 py-2 rounded-xl border border-terracotta/30 break-all";
+      }
+
+      // 一鍵帶入上次拼法至作答槽
+      document.getElementById("btn-apply-prev-sentence").onclick = () => {
+        initSentencePuzzle();
+        const targetStr = rec.lastUserSentence;
+        const chips = Array.from(document.querySelectorAll(".bank-chip"));
+        let remaining = targetStr;
+        while (remaining.length > 0) {
+          const matchedChip = chips.find(c => !c.disabled && remaining.startsWith(c.dataset.text));
+          if (!matchedChip) break;
+          matchedChip.disabled = true;
+          matchedChip.classList.add("opacity-25");
+          builtTokens.push({ id: matchedChip.dataset.id, text: matchedChip.dataset.text });
+          remaining = remaining.slice(matchedChip.dataset.text.length);
+        }
+        renderDropzone();
+        showToast("已帶入上次拼法，可點擊積木調整！", "info");
+      };
+
+      document.getElementById("btn-fresh-sentence").onclick = () => {
+        initSentencePuzzle();
+        showToast("已清空作答區，重新挑戰！", "info");
+      };
+    }
+
+    function renderDropzone() {
+      const dz = document.getElementById("answer-dropzone");
+      if (builtTokens.length === 0) {
+        dz.innerHTML = `<span class="text-xs sm:text-sm text-gray-400">請依序點擊下方日語積木進行拼接...</span>`;
+        return;
+      }
+      dz.innerHTML = builtTokens.map((tok, idx) => `
+        <button data-pos="${idx}" class="dz-chip font-jp bg-indigoJp text-white px-4 py-2 min-h-[48px] rounded-xl font-bold text-base shadow-xs active:bg-terracotta active:scale-95 transition animate-pop">
+          ${tok.text}
+        </button>
+      `).join("");
+
+      dz.querySelectorAll(".dz-chip").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const pos = Number(btn.dataset.pos);
+          const removed = builtTokens.splice(pos, 1)[0];
+          const bankChip = document.querySelector(`.bank-chip[data-id="${removed.id}"]`);
+          if (bankChip) {
+            bankChip.disabled = false;
+            bankChip.classList.remove("opacity-25");
+          }
+          renderDropzone();
+        });
+      });
+    }
+
+    document.getElementById("btn-clear-sentence").addEventListener("click", initSentencePuzzle);
+
+    document.getElementById("btn-check-sentence").addEventListener("click", async () => {
+      const uData = ALL_UNITS.find(u => u.unit === activeSentenceUnit);
+      const userAns = builtTokens.map(t => t.text).join("");
+      const msgEl = document.getElementById("sentence-feedback-msg");
+
+      if (!userAns) {
+        msgEl.className = "text-sm font-bold text-amber-600";
+        msgEl.textContent = "⚠️ 請先點選詞塊再送出喔！";
+        return;
+      }
+
+      if (userAns === uData.sentence.jpFull) {
+        msgEl.className = "text-sm font-bold text-matcha";
+        msgEl.textContent = "🎉 完全正確！已解鎖詳細文法解析並同步積分！";
+        speakJP(uData.sentence.jpFull);
+        showToast("🎉 造句完全正確！+30 分", "success");
+
+        const nowIso = new Date().toISOString();
+        const rec = ensureUnitRecord(activeSentenceUnit);
+        rec.sentenceAttempts += 1;
+        rec.sentencePassedCount = (rec.sentencePassedCount || 0) + 1;
+        rec.sentenceStatus = "passed";
+        rec.lastUserSentence = userAns;
+        rec.lastSentenceResult = "passed";
+        rec.lastSentenceDate = nowIso;
+
+        userProgress.score += 30;
+        if (!userProgress.unitSentenceDone.includes(activeSentenceUnit)) {
+          userProgress.unitSentenceDone.push(activeSentenceUnit);
+        }
+        if (userProgress.mistakes[activeSentenceUnit]) {
+          delete userProgress.mistakes[activeSentenceUnit];
+        }
+
+        recordAttemptLog({
+          unit: activeSentenceUnit,
+          mode: "sentence",
+          passed: true,
+          scoreDelta: 30,
+          detail: userAns
+        });
+
+        document.getElementById("exp-jp-full").textContent = uData.sentence.jpFull;
+        document.getElementById("exp-romaji").textContent = uData.sentence.romaji;
+        document.getElementById("exp-grammar-note").textContent = uData.sentence.grammar;
+        document.getElementById("exp-tokens").innerHTML = uData.sentence.tokens.map(t => `
+          <div class="bg-white border border-matcha/30 rounded-xl p-3 text-xs">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-jp font-bold text-indigoJp text-base">${t.text}</span>
+              <span class="text-[11px] px-2 py-0.5 rounded bg-matchaSoft text-matcha font-bold shrink-0">${t.pos}</span>
+            </div>
+            <div class="text-gray-600 mt-1 leading-snug">${t.note}</div>
+          </div>
+        `).join("");
+
+        const expBox = document.getElementById("grammar-explanation-box");
+        expBox.classList.remove("hidden");
+        expBox.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+        const speakBtn = document.getElementById("btn-speak-answer");
+        speakBtn.classList.remove("hidden");
+        speakBtn.onclick = () => speakJP(uData.sentence.jpFull);
+
+        renderSentencePrevAttemptBox(uData);
+        await saveProgress();
+      } else {
+        msgEl.className = "text-sm font-bold text-terracotta";
+        msgEl.textContent = "❌ 語序或助詞不正確，已自動收入錯題本，請再試一次！";
+        showToast("順序不對喔，已記入錯題本！", "error");
+
+        const nowIso = new Date().toISOString();
+        const rec = ensureUnitRecord(activeSentenceUnit);
+        rec.sentenceAttempts += 1;
+        if (rec.sentenceStatus !== "passed") {
+          rec.sentenceStatus = "failed";
+        }
+        rec.lastUserSentence = userAns;
+        rec.lastSentenceResult = "failed";
+        rec.lastSentenceDate = nowIso;
+
+        const prev = userProgress.mistakes[activeSentenceUnit] || { count: 0 };
+        userProgress.mistakes[activeSentenceUnit] = {
+          count: prev.count + 1,
+          lastWrong: userAns,
+          updatedAt: nowIso
+        };
+
+        recordAttemptLog({
+          unit: activeSentenceUnit,
+          mode: "sentence",
+          passed: false,
+          scoreDelta: 0,
+          detail: `誤拼：${userAns}`
+        });
+
+        renderSentencePrevAttemptBox(uData);
+        await saveProgress();
+      }
+    });
+
+    // =========================================================================
+    // 10. 錯題本與個人成績單／作答歷程渲染
+    // =========================================================================
+    function renderMistakesList() {
+      const listEl = document.getElementById("mistakes-list");
+      const drillBtn = document.getElementById("btn-start-mistake-drill");
+      const keys = Object.keys(userProgress.mistakes || {}).map(Number);
+      drillBtn.disabled = keys.length === 0;
+
+      if (keys.length === 0) {
+        listEl.innerHTML = `<div class="washi-card rounded-2xl p-8 text-center text-xs sm:text-sm text-gray-400">✨ 目前沒有任何錯題紀錄，繼續保持！</div>`;
+        return;
+      }
+
+      listEl.innerHTML = keys.map(uNum => {
+        const uData = ALL_UNITS.find(u => u.unit === uNum);
+        const rec = userProgress.mistakes[uNum];
+        return `
+          <div class="washi-card rounded-2xl p-4 border border-terracotta/30 flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-extrabold bg-sakuraSoft text-terracotta px-2 py-0.5 rounded-full">UNIT ${String(uNum).padStart(2, '0')}</span>
+                <span class="text-[11px] text-gray-500">累計錯誤 ${rec.count} 次</span>
+              </div>
+              <p class="font-maru font-bold text-sm sm:text-base text-ink mt-1 truncate">${uData ? uData.sentence.zh : ""}</p>
+              <p class="font-jp text-xs text-terracotta mt-0.5 truncate">上次誤拼：${rec.lastWrong}</p>
+            </div>
+            <button onclick="window.startUnitSentence(${uNum}, true)" class="min-h-[44px] bg-indigoJp active:scale-95 text-white text-xs font-bold px-3.5 py-2 rounded-xl shrink-0">
+              重練 ➔
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderHistoryDashboard() {
+      document.getElementById("history-player-title").textContent = getRankLabel(userProgress.score);
+      document.getElementById("history-total-score").textContent = userProgress.score.toLocaleString();
+      document.getElementById("history-cleared-stat").textContent = `${userProgress.clearedUnits.length} / 48`;
+
+      const records = Object.values(userProgress.unitRecords || {});
+      const totalMatchAttempts = records.reduce((s, r) => s + (r.matchAttempts || 0), 0);
+      const totalSentAttempts = records.reduce((s, r) => s + (r.sentenceAttempts || 0), 0);
+      const totalSentPassed = records.reduce((s, r) => s + (r.sentencePassedCount || 0), 0);
+      const totalAttempts = totalMatchAttempts + totalSentAttempts;
+      const accuracy = totalSentAttempts > 0 ? Math.round((totalSentPassed / totalSentAttempts) * 100) : 0;
+
+      document.getElementById("history-attempts-stat").textContent = `${totalAttempts} 次`;
+      document.getElementById("history-accuracy-stat").textContent = `${accuracy}%`;
+
+      // 1. 八大章節完成度統計
+      const chStatsEl = document.getElementById("history-chapters-stats");
+      chStatsEl.innerHTML = CHAPTERS.map(ch => {
+        const cleared = ch.units.filter(u => userProgress.clearedUnits.includes(u)).length;
+        const pct = Math.round((cleared / ch.units.length) * 100);
+        return `
+          <div class="space-y-1">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-bold text-ink truncate pr-2">${ch.title}</span>
+              <span class="font-extrabold shrink-0 ${cleared === 6 ? 'text-matcha' : 'text-indigoJp'}">${cleared}/6 (${pct}%)</span>
+            </div>
+            <div class="w-full h-2 bg-washiDark rounded-full overflow-hidden">
+              <div class="h-full rounded-full transition-all duration-300 ${cleared === 6 ? 'bg-matcha' : 'bg-indigoJp'}" style="width: ${pct}%"></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // 2. 最近 10 筆作答紀錄時間軸
+      const timelineEl = document.getElementById("history-timeline-list");
+      const recentLogs = (userProgress.attemptHistory || []).slice(0, 10);
+
+      if (recentLogs.length === 0) {
+        timelineEl.innerHTML = `
+          <div class="text-center py-6 text-xs text-gray-400 bg-washi rounded-xl border border-washiDark">
+            尚無作答紀錄，快去「單元地圖」挑戰第一課吧！
+          </div>
+        `;
+        return;
+      }
+
+      timelineEl.innerHTML = recentLogs.map(log => {
+        const modeText = log.mode === "match" ? "🎴 單字配對" : "🧩 拼接造句";
+        const badgeCls = log.passed ? "bg-matchaSoft text-matcha" : "bg-sakuraSoft text-terracotta";
+        const statusText = log.passed ? `✅ 通過 (+${log.scoreDelta}分)` : "❌ 答錯";
+        return `
+          <div class="bg-washi rounded-xl p-3 border border-washiDark space-y-1.5">
+            <div class="flex items-center justify-between gap-2 text-[11px]">
+              <div class="flex items-center gap-1.5">
+                <span class="font-extrabold text-indigoJp">UNIT ${String(log.unit).padStart(2, "0")}</span>
+                <span class="text-gray-600 font-bold">${modeText}</span>
+              </div>
+              <span class="text-gray-400">${formatShortDate(log.timestamp)}</span>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <p class="font-bold text-xs text-ink truncate">${log.unitTitle || ""}</p>
+              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0 ${badgeCls}">${statusText}</span>
+            </div>
+            <p class="font-jp text-xs text-gray-600 bg-white px-2.5 py-1.5 rounded-lg border border-washiDark/80 break-all">${log.detail || ""}</p>
+          </div>
+        `;
+      }).join("");
+    }
+
+    document.getElementById("btn-start-mistake-drill").addEventListener("click", () => {
+      const keys = Object.keys(userProgress.mistakes).map(Number);
+      if (keys.length > 0) window.startUnitSentence(keys[0], true);
+    });
+
+    // =========================================================================
+    // 11. 教師管理後台（手機摘要卡片 + 桌面表格 + CSV 匯出，限 misiva60@layjh.ttct.edu.tw）
+    // =========================================================================
+    function getSampleDemoStudents() {
+      return [
+        {
+          name: `${userProgress.name}（目前本機紀錄）`,
+          email: currentUser?.email || "guest@student.example.com",
+          score: userProgress.score,
+          clearedUnits: userProgress.clearedUnits,
+          mistakes: userProgress.mistakes,
+          updatedAt: userProgress.updatedAt
+        },
+        {
+          name: "陳思穎（801班 05號）",
+          email: "s1120105@layjh.ttct.edu.tw",
+          score: 680,
+          clearedUnits: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+          mistakes: { 12: { count: 1 } },
+          updatedAt: new Date(Date.now() - 3600 * 1000 * 2).toISOString()
+        },
+        {
+          name: "林宇軒（801班 14號）",
+          email: "s1120114@layjh.ttct.edu.tw",
+          score: 420,
+          clearedUnits: [1, 2, 3, 4, 5, 6],
+          mistakes: { 7: { count: 2 }, 9: { count: 1 } },
+          updatedAt: new Date(Date.now() - 3600 * 1000 * 18).toISOString()
+        },
+        {
+          name: "張雅筑（802班 22號）",
+          email: "s1120222@layjh.ttct.edu.tw",
+          score: 950,
+          clearedUnits: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+          mistakes: {},
+          updatedAt: new Date(Date.now() - 3600 * 1000 * 26).toISOString()
+        }
+      ];
+    }
+
+    async function loadAdminDashboard() {
+      if (!hasAdminAccess()) {
+        showToast("權限不足：僅限管理人員帳號存取", "error");
+        switchTab("units");
+        return;
+      }
+
+      const cardsContainer = document.getElementById("admin-students-cards");
+      const tbody = document.getElementById("admin-students-tbody");
+      const subtitle = document.getElementById("admin-mode-subtitle");
+
+      cardsContainer.innerHTML = `<div class="text-center py-8 text-xs text-gray-400">正在載入學生成績資料...</div>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-400">正在載入學生成績資料...</td></tr>`;
+
+      if (!isFirebaseReady || isDemoAdminMode) {
+        subtitle.textContent = "目前為模擬管理員預覽模式（顯示範例班級成績；正式使用請以管理員 Google 帳號登入）。";
+        cachedAllStudents = getSampleDemoStudents().sort((a, b) => (b.score || 0) - (a.score || 0));
+        updateAdminStatsAndViews(cachedAllStudents);
+        return;
+      }
+
+      try {
+        subtitle.textContent = "即時檢視所有 Google 登入學生的積分、通關單元與錯題紀錄。";
+        const snap = await getDocs(collection(db, "users"));
+        cachedAllStudents = [];
+        snap.forEach(d => cachedAllStudents.push(d.data()));
+        cachedAllStudents.sort((a, b) => (b.score || 0) - (a.score || 0));
+        updateAdminStatsAndViews(cachedAllStudents);
+      } catch (err) {
+        cardsContainer.innerHTML = `<div class="text-center py-6 text-xs text-terracotta">讀取失敗：${err.message}</div>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-terracotta">讀取失敗：${err.message}</td></tr>`;
+      }
+    }
+
+    function updateAdminStatsAndViews(list) {
+      const total = list.length;
+      const avgScore = total ? Math.round(list.reduce((s, x) => s + (x.score || 0), 0) / total) : 0;
+      const avgUnits = total ? (list.reduce((s, x) => s + (x.clearedUnits?.length || 0), 0) / total).toFixed(1) : 0;
+
+      document.getElementById("admin-stat-students").textContent = `${total} 人`;
+      document.getElementById("admin-stat-avg-score").textContent = `${avgScore} 分`;
+      document.getElementById("admin-stat-avg-units").textContent = `${avgUnits}/48`;
+
+      renderAdminViews(list);
+    }
+
+    function renderAdminViews(list) {
+      const cardsContainer = document.getElementById("admin-students-cards");
+      const tbody = document.getElementById("admin-students-tbody");
+
+      if (list.length === 0) {
+        cardsContainer.innerHTML = `<div class="washi-card rounded-2xl p-6 text-center text-xs text-gray-400">尚無學生登入紀錄</div>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-gray-400">尚無學生登入紀錄</td></tr>`;
+        return;
+      }
+
+      // 1. 手機版高可讀性摘要卡片列表
+      cardsContainer.innerHTML = list.map(st => {
+        const cleared = [...(st.clearedUnits || [])].sort((a, b) => a - b);
+        const mistakeCount = st.mistakes ? Object.keys(st.mistakes).length : 0;
+        const timeStr = st.updatedAt ? new Date(st.updatedAt).toLocaleString("zh-TW", { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : "-";
+        return `
+          <div class="washi-card rounded-2xl p-4 space-y-2.5">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="font-bold text-base text-indigoJp truncate">${st.name || "未命名學生"}</div>
+                <div class="text-xs text-gray-500 truncate">${st.email || "-"}</div>
+              </div>
+              <span class="text-[11px] text-gray-400 shrink-0">${timeStr}</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 bg-washi rounded-xl p-2.5 text-center border border-washiDark">
+              <div>
+                <span class="text-[11px] text-gray-500 block">累計積分</span>
+                <span class="font-extrabold text-sm text-warmGold">${st.score || 0}</span>
+              </div>
+              <div>
+                <span class="text-[11px] text-gray-500 block">通關單元</span>
+                <span class="font-extrabold text-sm text-matcha">${cleared.length}/48</span>
+              </div>
+              <div>
+                <span class="text-[11px] text-gray-500 block">待複習錯題</span>
+                <span class="font-extrabold text-sm ${mistakeCount > 0 ? 'text-terracotta' : 'text-gray-400'}">${mistakeCount} 題</span>
+              </div>
+            </div>
+
+            <div class="text-xs text-gray-600 bg-white rounded-xl px-3 py-2 border border-washiDark/70 leading-relaxed">
+              <span class="font-bold text-indigoJp">已通關：</span>
+              ${cleared.length > 0 ? cleared.map(u => `U${u}`).join("、") : "尚未完成任何單元"}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // 2. 桌面版明細表格
+      tbody.innerHTML = list.map(st => {
+        const cleared = [...(st.clearedUnits || [])].sort((a, b) => a - b);
+        const mistakeCount = st.mistakes ? Object.keys(st.mistakes).length : 0;
+        const timeStr = st.updatedAt ? new Date(st.updatedAt).toLocaleString("zh-TW") : "-";
+        return `
+          <tr class="hover:bg-washi/60">
+            <td class="py-3 px-4 font-bold text-indigoJp">${st.name || "未命名"}</td>
+            <td class="py-3 px-4 text-gray-600">${st.email || "-"}</td>
+            <td class="py-3 px-4 font-bold text-warmGold">${st.score || 0}</td>
+            <td class="py-3 px-4 font-bold text-matcha">${cleared.length} / 48</td>
+            <td class="py-3 px-4 text-xs text-gray-500 max-w-xs truncate" title="${cleared.join(', ')}">
+              ${cleared.length > 0 ? cleared.map(u => `U${u}`).join(", ") : "尚無"}
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-0.5 rounded-full text-xs font-bold ${mistakeCount > 0 ? 'bg-sakuraSoft text-terracotta' : 'bg-gray-100 text-gray-500'}">
+                ${mistakeCount} 題
+              </span>
+            </td>
+            <td class="py-3 px-4 text-xs text-gray-500">${timeStr}</td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    document.getElementById("admin-search-input").addEventListener("input", (e) => {
+      const kw = e.target.value.toLowerCase();
+      const filtered = cachedAllStudents.filter(s =>
+        (s.name || "").toLowerCase().includes(kw) || (s.email || "").toLowerCase().includes(kw)
+      );
+      renderAdminViews(filtered);
+    });
+
+    document.getElementById("btn-refresh-admin").addEventListener("click", () => {
+      loadAdminDashboard();
+      showToast("已重新整理後台成績！", "info");
+    });
+
+    document.getElementById("btn-export-csv").addEventListener("click", () => {
+      if (cachedAllStudents.length === 0) return;
+      const headers = ["學生姓名", "Google帳號", "累計積分", "已通關單元數", "已通關單元清單", "未解決錯題數", "最後更新時間"];
+      const rows = cachedAllStudents.map(st => [
+        `"${st.name || ''}"`,
+        `"${st.email || ''}"`,
+        st.score || 0,
+        (st.clearedUnits || []).length,
+        `"${(st.clearedUnits || []).join(';')}"`,
+        st.mistakes ? Object.keys(st.mistakes).length : 0,
+        `"${st.updatedAt || ''}"`
+      ]);
+      const csvContent = "\uFEFF" + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `日語單元學習成績單_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
+      showToast("📥 CSV 成績單匯出完成！", "success");
+    });
+
+    // 初始化啟動
+    loadLocalProgress();
+    populateUnitSelects();
+    updateHeaderUI();
+    renderResumeCard();
+    renderChapterPills();
+    renderChapters();
+    renderMistakesList();
+    renderHistoryDashboard();
+    initMatchBoard();
+    initSentencePuzzle();
+  </script>
+</body>
+</html>
